@@ -17,6 +17,7 @@
 - Precio Dolar/Peso
 
 # Instalación
+--------exportar base de datos(control_stock.sql)---------
 
 ```bash
 pip install -r requirements.txt
