@@ -14,11 +14,18 @@
 - Eliminar productos
 - Actualizar stock
 - Edición de productos
-- Precio Dolar/Peso
+- Precio Dolar/Peso arg
 
+<<<<<<< HEAD
 # Instalación
 --------exportar base de datos(control_stock.sql)---------
+=======
+# Instalación y uso
+----Importar la base de datos MySQL ("control_stock.sql")----
 
-```bash
+
+´´terminal ----------------
+>>>>>>> 64827f5 (abm de productos, proveedores,categorias)
+
 pip install -r requirements.txt
 python main.py

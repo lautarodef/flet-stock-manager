@@ -1,80 +1,129 @@
+# ============================================================
+#  main.py — Punto de entrada de la aplicación
+# ============================================================
+
 import flet as ft
-from DB_CONN import *
-import os
+
+from productos   import vista_productos
+from proveedores import vista_proveedores
+from categorias  import vista_categorias
+
+ACCENT_COLOR = "#ff5757"
+NAV_WIDTH    = 200
 
 
 def main(page: ft.Page):
+    page.title            = "Control de Stock"
+    page.padding          = 0
+    page.window.maximized = True
 
-    def conectar():
-        return mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password=os.getenv("DB_PASSWORD"),
-            database="control_stock"
-        )
+    # Contenedor de contenido: vive una sola vez en el layout.
+    # Cada vista limpia su contenido y agrega sus controles acá adentro.
+    area = ft.Column(
+        expand=True,
+        scroll=ft.ScrollMode.AUTO,
+        controls=[],
+    )
 
-    def obtener():
-        conn = conectar()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT codigo, descripcion, cantidad_disp, proveedor FROM productos")
-        productos = cursor.fetchall()
-        conn.close()
-        return productos
-
-    def actualizar(lista):
-        tabla.rows.clear()
-
-        for p in lista:
-            tabla.rows.append(
-                ft.DataRow(
-                    cells=[
-                        ft.DataCell(ft.Text(str(p["codigo"]))),
-                        ft.DataCell(ft.Text(p["descripcion"])),
-                        ft.DataCell(ft.Text(str(p["cantidad_disp"]))),
-                        ft.DataCell(ft.Text(p["proveedor"]))
-                    ]
-                )
-            )
-
+    def navegar(vista: str):
+        # Limpiamos diálogos y el contenido del área
+        page.overlay.clear()
+        area.controls.clear()
         page.update()
 
-    productos = obtener()
+        # Actualizamos la barra lateral con el ítem activo
+        nav_container.content = barra_lateral(vista)
+        page.update()
 
-    def filtrar(texto):
-        texto = texto.lower().strip()
+        # Cargamos la vista pasándole el área donde debe insertar sus controles
+        if vista == "productos":
+            vista_productos(page, area)
+        elif vista == "proveedores":
+            vista_proveedores(page, area)
+        elif vista == "categorias":
+            vista_categorias(page, area)
 
-        if not texto:
-            actualizar(productos)
-        else:
-            filtrados = [
-                p for p in productos
-                if texto in str(p["codigo"]).lower()
-                or texto in p["descripcion"].lower()
-                or texto in p["proveedor"].lower()
-            ]
+    # Contenedor de la barra lateral (se actualiza al navegar)
+    nav_container = ft.Container()
 
-            actualizar(filtrados)
+    def barra_lateral(vista_activa: str):
+        def item_nav(texto, icono, clave, deshabilitado=False):
+            activo = clave == vista_activa
+            return ft.Container(
+                content=ft.Row(
+                    controls=[
+                        ft.Icon(
+                            icono,
+                            size=20,
+                            color=ft.Colors.WHITE        if activo
+                                  else ft.Colors.GREY_700 if deshabilitado
+                                  else ft.Colors.GREY_400,
+                        ),
+                        ft.Text(
+                            texto,
+                            size=14,
+                            weight=ft.FontWeight.W_600 if activo else ft.FontWeight.W_400,
+                            color=ft.Colors.WHITE        if activo
+                                  else ft.Colors.GREY_700 if deshabilitado
+                                  else ft.Colors.GREY_300,
+                        ),
+                    ],
+                    spacing=12,
+                ),
+                padding=ft.padding.symmetric(horizontal=16, vertical=10),
+                border_radius=8,
+                bgcolor=ACCENT_COLOR if activo else ft.Colors.TRANSPARENT,
+                on_click=(lambda e, k=clave: navegar(k)) if not deshabilitado else None,
+                ink=not deshabilitado,
+                tooltip="Próximamente" if deshabilitado else None,
+            )
 
-    search_field = ft.TextField(
-        label="Busqueda",
-        on_change=lambda e: filtrar(e.control.value)
-    )
+        return ft.Container(
+            width=NAV_WIDTH,
+            bgcolor="#1e1e2e",
+            expand_loose=True,
+            padding=ft.padding.only(top=24, bottom=24, left=12, right=12),
+            content=ft.Column(
+                spacing=4,
+                controls=[
+                    ft.Text("MENÚ", size=11, weight=ft.FontWeight.W_600,
+                            color=ft.Colors.GREY_500),
+                    ft.Divider(height=12, color=ft.Colors.TRANSPARENT),
+                    item_nav("Productos",   ft.Icons.INVENTORY_2_OUTLINED,    "productos"),
+                    item_nav("Categorías",  ft.Icons.LABEL_OUTLINE,           "categorias"),
+                    item_nav("Proveedores", ft.Icons.LOCAL_SHIPPING_OUTLINED, "proveedores"),
 
-    tabla = ft.DataTable(
-        columns=[
-            ft.DataColumn(ft.Text("Codigo")),
-            ft.DataColumn(ft.Text("Descripción")),
-            ft.DataColumn(ft.Text("Cantidad disponible")),
-            ft.DataColumn(ft.Text("Proveedor")),
-        ],
-        rows=[]
-    )
+                    ft.Divider(height=16, color="#ffffff10"),
 
-    actualizar(productos)
+                    ft.Text("Ventas", size=11, color=ft.Colors.GREY_700,
+                            weight=ft.FontWeight.W_600),
+                    item_nav("Punto de venta", ft.Icons.POINT_OF_SALE_OUTLINED,
+                             "ventas", deshabilitado=True),
+                ],
+            ),
+        )
+
+    # Layout principal: se arma una sola vez
+    nav_container.content = barra_lateral("productos")
 
     page.add(
-        search_field,
-        tabla
+        ft.Row(
+            expand=True,
+            spacing=0,
+            controls=[
+                nav_container,
+                ft.VerticalDivider(width=1),
+                ft.Container(
+                    content=area,
+                    expand=True,
+                    padding=24,
+                ),
+            ],
+        )
     )
+
+    # Carga inicial
+    navegar("productos")
+
 
 ft.app(target=main)
